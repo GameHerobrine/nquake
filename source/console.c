@@ -155,14 +155,24 @@ If the line width has changed, reformat the buffer.
 void Con_CheckResize (void)
 {
 	int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
-	char	tbuf[CON_TEXTSIZE];
+#ifndef FORNSPIRE
+	char	tbuf[ CON_TEXTSIZE ];
+#else
+	char	*tbuf = ( unsigned char * )p_nspire_stack_avoidance;
+	p_nspire_stack_avoidance = ( ( ( unsigned char * ) p_nspire_stack_avoidance ) + CON_TEXTSIZE );
+#endif
 
 	width = (vid.width >> 3) - 2;
 
-	if (width == con_linewidth)
+	if( width == con_linewidth )
+	{
+#ifdef FORNSPIRE
+		p_nspire_stack_avoidance = ( ( ( unsigned char * ) p_nspire_stack_avoidance ) - CON_TEXTSIZE );
+#endif
 		return;
+	}
 
-	if (width < 1)			// video hasn't been initialized yet
+	if( width < 1 )			// video hasn't been initialized yet
 	{
 		width = 38;
 		con_linewidth = width;
@@ -203,6 +213,11 @@ void Con_CheckResize (void)
 
 	con_backscroll = 0;
 	con_current = con_totallines - 1;
+
+#ifdef FORNSPIRE
+	p_nspire_stack_avoidance = ( ( ( unsigned char * ) p_nspire_stack_avoidance ) - CON_TEXTSIZE );
+#endif
+
 }
 
 

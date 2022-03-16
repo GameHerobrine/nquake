@@ -20,8 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // sys_nspire.c -- system driver for the TI-Nspire CX [CAS]
 
 #ifndef WIN32FORNSPIRE
-#include <os.h>
-#include <nspireio2.h>
+#include <keys.h>
+#include <libndls.h>
 #endif
 
 #include "quakedef.h"
@@ -31,8 +31,17 @@ void Sys_NSpireInput( void );
 
 qboolean			isDedicated = false;
 
+void *p_nspire_main_stack_ptr;
+
 void *p_nspire_stack_redirect = NULL;
+void *p_nspire_stack_avoidance = NULL;
+
 void *p_nspire_membase = NULL;
+
+int i_nspire_cmdline_argc;
+char *pc_nspire_cmdline_file;
+#define MAX_NSPIRE_CMDLINE_ARGS 64
+char *rgpc_nspire_cmdline_args[ MAX_NSPIRE_CMDLINE_ARGS ];
 /*
 ===============================================================================
 
@@ -167,17 +176,80 @@ unsigned int ui32_last_nspire_cx_timer_value;
 #define NSPIRE_CX_TIMER_LOAD_VALUE (*(volatile unsigned int * )0x900D0000)
 #define NSPIRE_CX_TIMER_VALUE (*(volatile unsigned int * )0x900D0004)
 
+#if FORNSPIRE
+t_key rgi_nspire_key_map[ 128 ];
+#endif
+
 void Sys_Init( void )
 {
 #if FORNSPIRE
 	if( has_colors )
 	{
+		int idx;
 		ui32_nspire_cx_timer_load_value = NSPIRE_CX_TIMER_LOAD_VALUE;
 		b_valid_timer = 1;
 
 		NSPIRE_CX_TIMER_LOAD_VALUE = 0xffffffff;
 		ui32_last_nspire_cx_timer_value = NSPIRE_CX_TIMER_VALUE;
 		ui64_nspire_cx_timer_start_value = ui64_nspire_cx_timer_current_value = ui32_last_nspire_cx_timer_value;
+
+		idx = 0;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_ENTER;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_ESC;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_SPACE;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_CTRL;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_TAB;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_SHIFT;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_DEL;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_EXP;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_SQU;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_eEXP;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_TENX;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_LP;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_RP;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_QUES;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_QUESEXCL;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_MINUS;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_PLUS;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_A;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_B;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_C;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_D;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_E;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_F;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_G;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_H;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_I;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_J;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_K;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_L;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_M;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_N;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_O;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_P;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_Q;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_R;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_S;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_T;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_U;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_V;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_W;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_X;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_Y;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_Z;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_1;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_2;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_3;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_4;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_5;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_6;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_7;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_8;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_9;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_0;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_PERIOD;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_EQU;
+		rgi_nspire_key_map[ idx++ ] = KEY_NSPIRE_TRIG;
 	}
 #endif
 }
@@ -218,6 +290,14 @@ void Sys_FreeResources()
 	{
 		free( p_nspire_stack_redirect );
 	}
+	if( p_nspire_stack_avoidance )
+	{
+		free( p_nspire_stack_avoidance );
+	}
+	if( pc_nspire_cmdline_file )
+	{
+		free( pc_nspire_cmdline_file );
+	}
 }
 
 
@@ -225,10 +305,11 @@ void Sys_Error (char *error, ...)
 {
 	int i;
 #ifndef WIN32FORNSPIRE
-	nio_console csl;
+	/*nio_console csl;*/
 #endif
 
 	Sys_RestoreTimer();
+	VID_RestoreColorMode();
 
 	va_list         argptr;
 	char rgc_errorstr[ 256 ];
@@ -238,13 +319,7 @@ void Sys_Error (char *error, ...)
 	va_end (argptr);
 
 #ifndef WIN32FORNSPIRE
-	nio_InitConsole(&csl, 53, 29, 0, 0, 0, 15);
-	nio_DrawConsole(&csl);
-	nio_printf(&csl, "Sys Error:\n");
-	nio_printf(&csl, rgc_errorstr);
-	nio_printf(&csl, "\n");
-	wait_key_pressed();
-	nio_CleanUp(&csl);
+	show_msgbox( "Sys Error:", rgc_errorstr );
 #else
 	printf("Sys Error:\n");
 	printf( rgc_errorstr );
@@ -330,7 +405,7 @@ void Sys_LowFPPrecision (void)
 }
 
 #if FORNSPIRE
-t_key rgi_nspire_key_map[ 128 ] = {
+/*t_key rgi_nspire_key_map[ 128 ]; = {
 	KEY_NSPIRE_ENTER,
 	KEY_NSPIRE_ESC,
 	KEY_NSPIRE_SPACE,
@@ -387,7 +462,7 @@ t_key rgi_nspire_key_map[ 128 ] = {
 	KEY_NSPIRE_PERIOD,
 	KEY_NSPIRE_EQU,
 	KEY_NSPIRE_TRIG,
-};
+};*/
 
 int rgi_nspire_key_map_to_quake[ 128 ] = {
 	K_ENTER,
@@ -469,9 +544,10 @@ void Sys_NSpireInput( void )
 	int up_down_optimized, up_right_down_optimized, right_down_optimized, right_down_down_optimized;
 	int down_down_optimized, down_left_down_optimized, left_down_optimized, left_up_down_optimized;
 
+#define KEY_MAP(x)                 ((void*)(0x900E0000+(x)))
 	for( i_idx = 0x10; i_idx < 0x20; i_idx+=2 )
 	{
-		rgui16_key_map_optimized[ i_idx >> 1 ] = (*(volatile short*)(KEY_MAP + i_idx));
+		rgui16_key_map_optimized[ i_idx >> 1 ] = (*(volatile short*)(KEY_MAP(i_idx)));
 	}
 
 	for( i_idx = 0; i_idx < 128; i_idx++ )
@@ -633,12 +709,26 @@ void Sys_NSpireInput( void )
 
 //=============================================================================
 
+void nspire_host_frame_loop()
+{
+	double f64_start, f64_end, f64_delta;
+
+	f64_start = f64_end = Sys_FloatTime();
+	while( 1 )
+	{
+		f64_delta = f64_end - f64_start;
+		/*Sys_NSpireInput();*/
+		Host_Frame( f64_delta );
+		f64_start = f64_end;
+		f64_end = Sys_FloatTime();
+	}
+}
+
 void main_s( int argc, char **argv )
 {
 	char *pc_basedir_term;
 	static quakeparms_t    parms;
 	unsigned int i = 0;
-	double f64_start, f64_end, f64_delta;
 
 	char rgc_test[ 128 ];
 
@@ -684,7 +774,65 @@ void main_s( int argc, char **argv )
 
 	/*printf("argc: %d\n", argc );*/
 
-	COM_InitArgv (argc, argv);
+	{
+		char rgc_fname[ 256 ];
+		FILE *f;
+
+		i_nspire_cmdline_argc = 0;
+		rgpc_nspire_cmdline_args[ i_nspire_cmdline_argc++ ] = argv[ 0 ];
+
+		sprintf( rgc_fname, "%s/nquake.cmd.tns", parms.basedir);
+		f = fopen( rgc_fname, "rb" );
+		if( f )
+		{
+			int flength, i_idx;
+			fseek( f, 0, SEEK_END );
+			flength = ftell( f );
+			fseek( f, 0, SEEK_SET );
+			pc_nspire_cmdline_file = malloc( ( flength + 1 ) * sizeof( char ) );
+			memset( pc_nspire_cmdline_file, 0, ( flength + 1 ) * sizeof( char ) );
+			fread( pc_nspire_cmdline_file, 1, flength, f );
+			fclose( f );
+
+			i_idx = 0;
+			while( i_idx != flength && i_nspire_cmdline_argc + 1 < MAX_NSPIRE_CMDLINE_ARGS )
+			{
+				while( pc_nspire_cmdline_file[ i_idx ] == ' ' )
+				{
+					i_idx++;
+				}
+				if( i_idx == flength )
+				{
+					break;
+				}
+				if( pc_nspire_cmdline_file[ i_idx ] == '"' )
+				{
+					i_idx++;
+					rgpc_nspire_cmdline_args[ i_nspire_cmdline_argc ] = &pc_nspire_cmdline_file[ i_idx ];
+					while( pc_nspire_cmdline_file[ i_idx ] && pc_nspire_cmdline_file[ i_idx ] != '"' )
+					{
+						i_idx++;
+					}
+					pc_nspire_cmdline_file[ i_idx ] = 0;
+					i_idx++;
+				}
+				else
+				{
+					rgpc_nspire_cmdline_args[ i_nspire_cmdline_argc ] = &pc_nspire_cmdline_file[ i_idx ];
+					while( pc_nspire_cmdline_file[ i_idx ] && pc_nspire_cmdline_file[ i_idx ] != ' ' )
+					{
+						i_idx++;
+					}
+					pc_nspire_cmdline_file[ i_idx ] = 0;
+					i_idx++;
+				}
+				i_nspire_cmdline_argc++;
+			}
+		}
+	}
+
+
+	COM_InitArgv(i_nspire_cmdline_argc, rgpc_nspire_cmdline_args);
 
 	parms.argc = com_argc;
 	parms.argv = com_argv;
@@ -694,16 +842,13 @@ void main_s( int argc, char **argv )
 #ifndef WIN32
 	/*bkpt();*/
 #endif
-	Host_Init (&parms);
-	f64_start = f64_end = Sys_FloatTime();
-	while (1)
-	{
-		f64_delta = f64_end - f64_start;
-		/*Sys_NSpireInput();*/
-		Host_Frame ( f64_delta );
-		f64_start = f64_end;
-		f64_end = Sys_FloatTime();
-	}
+	Host_Init( &parms );
+
+#if 0
+	nspire_stack_redirect(nspire_host_frame_loop, ( unsigned char * ) p_nspire_stack_redirect_main + 0x60000); /* no return */
+#else
+	nspire_host_frame_loop(); /* no return */
+#endif
 }
 
 #ifdef FORNSPIRE
@@ -714,15 +859,17 @@ extern void *p_nspire_stack_redirect;
 
 int main (int argc, char **argv)
 {
+	int i = 0;
+	p_nspire_main_stack_ptr = &i;
 
 #ifdef FORNSPIRE
+	p_nspire_stack_avoidance = malloc( 0x20000 );
 	p_nspire_stack_redirect = malloc( 0x60000 );
+
 	nspire_stack_align( argc, argv );
 	Sys_Quit();
 #else
-	p_nspire_stack_redirect = malloc( 0x60000 );
 	main_s( argc, argv );
-	free( p_nspire_stack_redirect );
 #endif
 
 	return 0;

@@ -87,7 +87,7 @@ float		aliasxscale, aliasyscale, aliasxcenter, aliasycenter;
 fixed16_t f16_xscale, f16_yscale, f16_xcenter, f16_ycenter;
 #endif
 
-int		screenwidth;
+int     screenwidth;
 
 float	pixelAspect;
 float	screenAspect;

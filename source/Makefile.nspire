@@ -1,11 +1,16 @@
 GCC = nspire-gcc
-AS = nspire-as
-LD = nspire-ld-bflt
+AS  = nspire-as
+GXX = nspire-g++
+LD  = nspire-ld
+GENZEHN = genzehn
+
 #-funroll-loops
-GCCFLAGS = -O3 -Wall -W -marm -ffast-math -fomit-frame-pointer -flto -DFORNSPIRE
-LDFLAGS = -lm
-EXE = nquake.tns
+GCCFLAGS = -O6 -Wall -W -marm -ffast-math -fomit-frame-pointer -flto -DFORNSPIRE
+LDFLAGS = -lm -flto
+EXE = nquake
 IEXE = nquake.elf
+ZEHNFLAGS = --name "nQuake" 
+
 SOURCES = cd_nspire.c chase.c cl_demo.c cl_input.c cl_main.c cl_parse.c cl_tent.c cmd.c common.c \
 	console.c crc.c cvar.c d_edge.c d_fill.c d_init.c d_modech.c d_part.c d_polyse.c d_scan.c d_scan_nspirec.c d_sky.c d_sprite.c \
 	d_surf.c d_vars.c d_zpoint.c draw.c host.c host_cmd.c in_nspire.c keys.c mathlib.c menu.c model.c \
@@ -20,7 +25,7 @@ OBJS = $(patsubst %.c,%.o,$(SOURCES)) $(patsubst %.S,%.o,$(ASOURCES))
 DISTDIR = .
 vpath %.tns $(DISTDIR)
 
-all: $(EXE)
+all: $(EXE).prg.tns
 
 %.o: %.c
 	$(GCC) $(GCCFLAGS) -c $< -o $@
@@ -28,9 +33,16 @@ all: $(EXE)
 %.o: %.S
 	$(GCC) -c $< -o $@
 
-$(EXE): $(OBJS)
+$(EXE).elf: $(OBJS)
 	mkdir -p $(DISTDIR)
-	$(LD) $^ $(LDFLAGS) $(GCCFLAGS) -o $(DISTDIR)/$@
+	$(LD) $^ -o $(DISTDIR)/$@ $(LDFLAGS)
+
+$(EXE).tns: $(EXE).elf
+	$(GENZEHN) --input $(DISTDIR)/$^ --output $(DISTDIR)/$@ $(ZEHNFLAGS)
+
+$(EXE).prg.tns: $(EXE).tns
+	make-prg $(DISTDIR)/$^ $(DISTDIR)/$@
+
 
 clean:
 	rm -f *.o *.elf

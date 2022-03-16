@@ -21,8 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "d_local.h"
 
-extern int bbextents;
-extern int bbextentt;
+/*extern int bbextents;
+extern int bbextentt;*/
 
 
 #if FORNSPIRE
@@ -69,7 +69,7 @@ static inline void draw_span_nspire_fw_8( byte *pdest, byte *pbase, fixed16_t f1
 	"smlabt	%[_pbase], %[_i_cachewidth], %[_f16_rpt], %[_pbase]					\n\t"	\
 	"ldrb	%[_f16_sstep], [%[_pbase], %[_f16_rps], asr #16]					\n\t"	\
 	"strb	%[_f16_sstep], [%[_pdest], #0]										\n\t"	\
-	: [_pdest] "+r" (pdest), [_pbase] "+r" (pbase), [_f16_rps] "+r" (f16_rps), [_f16_sstep] "+r" (f16_sstep), [_f16_rpt] "+r" (f16_rpt), [_f16_tstep] "+r" (f16_tstep), [_i_cachewidth] "+r" (i_cachewidth), [_i_tmp] "=r" (i_tmp) : : );
+	: [_pdest] "+r" (pdest), [_pbase] "+r" (pbase), [_f16_rps] "+r" (f16_rps), [_f16_sstep] "+r" (f16_sstep), [_f16_rpt] "+r" (f16_rpt), [_f16_tstep] "+r" (f16_tstep), [_i_cachewidth] "+r" (i_cachewidth), [_i_tmp] "=r" (i_tmp) : : "cc", "memory" );
 }
 
 
@@ -115,7 +115,7 @@ static inline void draw_span_nspire_bw_8( byte *pdest, byte *pbase, fixed16_t f1
 	"smlabt	%[_pbase], %[_i_cachewidth], %[_f16_rpt], %[_pbase]					\n\t"	\
 	"ldrb	%[_f16_sstep], [%[_pbase], %[_f16_rps], asr #16]					\n\t"	\
 	"strb	%[_f16_sstep], [%[_pdest], #0]										\n\t"	\
-	: [_pdest] "+r" (pdest), [_pbase] "+r" (pbase), [_f16_rps] "+r" (f16_rps), [_f16_sstep] "+r" (f16_sstep), [_f16_rpt] "+r" (f16_rpt), [_f16_tstep] "+r" (f16_tstep), [_i_cachewidth] "+r" (i_cachewidth), [_i_tmp] "=r" (i_tmp) : : );
+	: [_pdest] "+r" (pdest), [_pbase] "+r" (pbase), [_f16_rps] "+r" (f16_rps), [_f16_sstep] "+r" (f16_sstep), [_f16_rpt] "+r" (f16_rpt), [_f16_tstep] "+r" (f16_tstep), [_i_cachewidth] "+r" (i_cachewidth), [_i_tmp] "=r" (i_tmp) : : "cc", "memory" );
 }
 
 static inline void draw_span_nspire_fw_s( byte *pdest, byte *pbase, fixed16_t f16_rps, fixed16_t f16_sstep, fixed16_t f16_rpt, fixed16_t f16_tstep, int i_cachewidth, int i_count )
@@ -180,7 +180,7 @@ static inline void draw_span_nspire_fw_s( byte *pdest, byte *pbase, fixed16_t f1
 	"ldrb	%[_f16_sstep], [%[_pbase], %[_f16_rps], asr #16]					\n\t"	\
 	"strb	%[_f16_sstep], [%[_pdest], #0]										\n\t"	\
 ".draw_span_nspire_fw_s0:														\n\t"	\
-	: [_pdest] "+r" (pdest), [_pbase] "+r" (pbase), [_f16_rps] "+r" (f16_rps), [_f16_sstep] "+r" (f16_sstep), [_f16_rpt] "+r" (f16_rpt), [_f16_tstep] "+r" (f16_tstep), [_i_cachewidth] "+r" (i_cachewidth), [_i_count] "+r" (i_count) : : );
+	: [_pdest] "+r" (pdest), [_pbase] "+r" (pbase), [_f16_rps] "+r" (f16_rps), [_f16_sstep] "+r" (f16_sstep), [_f16_rpt] "+r" (f16_rpt), [_f16_tstep] "+r" (f16_tstep), [_i_cachewidth] "+r" (i_cachewidth), [_i_count] "+r" (i_count) : : "cc", "memory" );
 
 }
 
@@ -247,7 +247,7 @@ static inline void draw_span_nspire_bw_s( byte *pdest, byte *pbase, fixed16_t f1
 	"ldrb	%[_f16_sstep], [%[_pbase], %[_f16_rps], asr #16]					\n\t"	\
 	"strb	%[_f16_sstep], [%[_pdest], #0]										\n\t"	\
 ".draw_span_nspire_bw_s0:														\n\t"	\
-	: [_pdest] "+r" (pdest), [_pbase] "+r" (pbase), [_f16_rps] "+r" (f16_rps), [_f16_sstep] "+r" (f16_sstep), [_f16_rpt] "+r" (f16_rpt), [_f16_tstep] "+r" (f16_tstep), [_i_cachewidth] "+r" (i_cachewidth), [_i_count] "+r" (i_count) : : );
+	: [_pdest] "+r" (pdest), [_pbase] "+r" (pbase), [_f16_rps] "+r" (f16_rps), [_f16_sstep] "+r" (f16_sstep), [_f16_rpt] "+r" (f16_rpt), [_f16_tstep] "+r" (f16_tstep), [_i_cachewidth] "+r" (i_cachewidth), [_i_count] "+r" (i_count) : : "cc", "memory" );
 }
 
 /*#define llmull_s16( m0, m1 ) ( ( ( long long )( m0 ) * ( m1 ) ) >> 16 );*/
@@ -267,7 +267,7 @@ static const unsigned char nr_table[] =
 static inline int udiv_fast_32_32( int den, int num )
 {
 	int tmp1, tmp3;
-	unsigned char *pui8_nr_table = &nr_table;
+	const unsigned char *pui8_nr_table = &nr_table[ 0 ];
 	__asm volatile (
 	"clz %[_tmp1], %[_den]								\n\t"	\
 	"movs %[_tmp3], %[_den], lsl %[_tmp1]				\n\t"	\
@@ -307,7 +307,7 @@ static inline int udiv_fast_32_32( int den, int num )
 	"movcs %[_den], %[_num]								\n\t"	\
 	"movcc %[_den], #-1									\n\t"	\
 "3:														\n\t"	\
-	: [_den] "+r" (den), [_num] "+r" (num), [_tmp1] "=&r" (tmp1), [_tmp2] "+r" (pui8_nr_table), [_tmp3] "=&r" (tmp3) : : );
+	: [_den] "+r" (den), [_num] "+r" (num), [_tmp1] "=&r" (tmp1), [_tmp2] "+r" (pui8_nr_table), [_tmp3] "=&r" (tmp3) : : "cc" );
 
 	return den;
 }

@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "d_local.h"
 
-viddef_t	vid;				// global video state
+extern viddef_t	vid;				// global video state
 
 #define	BASEWIDTH	320
 #define	BASEHEIGHT	240
@@ -42,7 +42,7 @@ unsigned	d_8to24table[256];
 
 unsigned char rgui8_palette[ 256 ][ 3 ];
 unsigned int rgui_palette[ 128 ];
-unsigned short rgui_saved_palette[ 128 ];
+unsigned int rgui_saved_palette[ 128 ];
 
 byte align256_colormap[ 0x4000 + 255 ];
 
@@ -71,6 +71,7 @@ void	VID_ShiftPalette (unsigned char *palette)
 
 void VID_SetPaletteMode()
 {
+
 	int i;
 	unsigned int i_ctrl;
 	volatile unsigned int *pi_lcd_control = IO_LCD_CONTROL;
@@ -85,10 +86,10 @@ void VID_SetPaletteMode()
 		rgui_saved_palette[ i ] = PALETTEREGS[ i ];
 	}
 
-	i_ctrl = ( *pi_lcd_control ) & ~0b1110; /* clear mode */
-
-	 /* PL111 - 8bpp mode */
-	*pi_lcd_control = i_ctrl | 0b0110;
+	if( lcd_init( SCR_320x240_8 ) == 0 )
+	{
+		Sys_Error( "unable to set 320x240 8bpp mode" );
+	}
 }
 
 void VID_RestoreColorMode()
@@ -104,8 +105,10 @@ void VID_RestoreColorMode()
 		PALETTEREGS[ i ] = rgui_saved_palette[ i ];
 	}
 
-
-	lcd_incolor();
+	if( lcd_init( lcd_type() ) == 0 )
+	{
+		Sys_Error( "could not restore native lcd mode"); /* fuck */
+	}
 }
 
 void	VID_Init (unsigned char *palette)
@@ -138,6 +141,73 @@ void	VID_Shutdown (void)
 	VID_RestoreColorMode();
 }
 
+
+static inline void VID_CopyTile_8x8_flipped( unsigned char *dst, int32_t i_dst_stride, unsigned char *srci, int32_t i_src_stride )
+{
+	int i_x, i_y;
+	const unsigned char *src;
+
+	src = ( const unsigned char * ) srci;
+
+	for( i_y = 0; i_y < 8; i_y++ )
+	{
+		for( i_x = 0; i_x < 8; i_x++ )
+		{
+			dst[ i_y + i_x * i_dst_stride ] = src[ i_x + i_y * i_src_stride ];
+		}
+	}
+}
+
+static inline void VID_CopyTile_flipped( unsigned char *dst, int32_t i_dst_stride, unsigned char *srci, int32_t i_src_stride, int32_t i_width, int32_t i_height )
+{
+	int i_x, i_y;
+	const unsigned char *src;
+
+	src = ( const unsigned char * ) srci;
+
+	for( i_y = 0; i_y < i_height; i_y++ )
+	{
+		for( i_x = 0; i_x < i_width; i_x++ )
+		{
+			dst[ i_y + i_x * i_dst_stride ] = src[ i_x + i_y * i_src_stride ];
+		}
+	}
+}
+
+static inline void VID_CopyTile_8x8_unflipped( unsigned char *dst, int32_t i_dst_stride, unsigned char *srci, int32_t i_src_stride )
+{
+	int i_x, i_y;
+	const unsigned char *src;
+
+	src = ( const unsigned char * ) srci;
+
+	for( i_y = 0; i_y < 8; i_y++ )
+	{
+		for( i_x = 0; i_x < 8; i_x++ )
+		{
+			dst[ i_x + i_y * i_dst_stride ] = src[ i_x + i_y * i_src_stride ];
+		}
+	}
+}
+
+static inline void VID_CopyTile_unflipped( unsigned char *dst, int32_t i_dst_stride, unsigned char *srci, int32_t i_src_stride, int32_t i_width, int32_t i_height )
+{
+	int i_x, i_y;
+	const unsigned char *src;
+
+	src = ( const unsigned char * ) srci;
+
+	for( i_y = 0; i_y < i_height; i_y++ )
+	{
+		for( i_x = 0; i_x < i_width; i_x++ )
+		{
+			dst[ i_x + i_y * i_dst_stride ] = src[ i_x + i_y * i_src_stride ];
+		}
+	}
+}
+
+
+#if 0
 static inline void VID_CopyLine( unsigned char *dst, unsigned char *src, int line_width )
 {
 	/* FIXME: why is the memcpy call faster ? */
@@ -221,30 +291,84 @@ static inline void VID_CopyLine( unsigned char *dst, unsigned char *src, int lin
 #endif
 }
 
+#endif
+
 void	VID_Update (vrect_t *rects)
 {
 #ifdef FORNSPIRE
 	int i_x, i_y, i_width, i_line_left;
-	unsigned char *ptr = SCREEN_BASE_ADDRESS;
-	unsigned char *pui8_dstline, *pui8_srcline;
+	unsigned char *ptr = REAL_SCREEN_BASE_ADDRESS;
+	unsigned char *pui8_dstline, *pui8_srcline, *pui8_dst, *pui8_src;
 
 	i_width = SCREEN_WIDTH;
 
-	if( rects->x == 0 && rects->width == BASEWIDTH )
+	if( lcd_type() == SCR_240x320_565 )
 	{
-		pui8_srcline = &vid_buffer[ rects->y * BASEWIDTH ];
-		pui8_dstline = &ptr[ rects->y * i_width ];
-		VID_CopyLine( pui8_dstline, pui8_srcline, rects->height * BASEWIDTH );
+		int32_t i_rem_height, i_rem_width, i_tile_height, i_tile_width;
+
+		i_rem_height = rects->height;
+		pui8_srcline = &vid_buffer[ rects->x + rects->y * SCREEN_WIDTH ];
+		pui8_dstline = &ptr[ rects->y + rects->x * SCREEN_HEIGHT ];
+
+		while( i_rem_height > 0 )
+		{
+			i_rem_width = rects->width;
+			pui8_src = pui8_srcline;
+			pui8_dst = pui8_dstline;
+			pui8_srcline += SCREEN_WIDTH * 8;
+			pui8_dstline += 8;
+			while( i_rem_width > 0 )
+			{
+				if( i_rem_width >= 8 && i_rem_height >= 8 )
+				{
+					VID_CopyTile_8x8_flipped( pui8_dst, SCREEN_HEIGHT, pui8_src, SCREEN_WIDTH );
+				}
+				else
+				{
+					VID_CopyTile_flipped( pui8_dst, SCREEN_HEIGHT, pui8_src, SCREEN_WIDTH, i_rem_width, i_rem_height );
+				}
+				pui8_src += 8;
+				pui8_dst += 8 * SCREEN_HEIGHT;
+				i_rem_width -= 8;
+			}
+			i_rem_height -= 8;
+		}
+	}
+	else if( lcd_type() == SCR_320x240_565 )
+	{
+		int32_t i_rem_height, i_rem_width, i_tile_height, i_tile_width;
+
+		i_rem_height = rects->height;
+		pui8_srcline = &vid_buffer[ rects->x + rects->y * SCREEN_WIDTH ];
+		pui8_dstline = &ptr[ rects->x + rects->y * SCREEN_WIDTH ];
+
+		while( i_rem_height > 0 )
+		{
+			i_rem_width = rects->width;
+			pui8_src = pui8_srcline;
+			pui8_dst = pui8_dstline;
+			pui8_srcline += SCREEN_WIDTH * 8;
+			pui8_dstline += SCREEN_WIDTH * 8;
+			while( i_rem_width > 0 )
+			{
+				if( i_rem_width >= 8 && i_rem_height >= 8 )
+				{
+					VID_CopyTile_8x8_unflipped( pui8_dst, SCREEN_WIDTH, pui8_src, SCREEN_WIDTH );
+				}
+				else
+				{
+					VID_CopyTile_unflipped( pui8_dst, SCREEN_WIDTH, pui8_src, SCREEN_WIDTH, i_rem_width, i_rem_height );
+				}
+				pui8_src += 8;
+				pui8_dst += 8;
+				i_rem_width -= 8;
+			}
+			i_rem_height -= 8;
+		}
 	}
 	else
 	{
-		i_x = rects->x;
-		for( i_y = rects->y; i_y < rects->y+rects->height; i_y++ )
-		{
-			pui8_srcline = &vid_buffer[ i_y * BASEWIDTH + i_x ];
-			pui8_dstline = &ptr[ i_y * i_width + i_x ];
-			VID_CopyLine( pui8_dstline, pui8_srcline, rects->width );
-		}
+		lcd_blit( &vid_buffer[ 0 ], SCR_320x240_8 );
 	}
 #else
 	volatile int i_pel;

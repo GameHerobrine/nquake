@@ -41,6 +41,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define NSPIRE_SMALL_OPTS 1
 
+#ifdef NSPIRE_SMALL_OPTS
+#define Q_sqrt sqrtf
+#endif
+
 #ifdef FORNSPIRE
 #define atof atof_dummy_syscall
 /*
@@ -48,9 +52,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define sprintf sprintf_dummy_syscall
 */
 
-#include <os.h>
-#include <setjmp.h>
 #include <math.h>
+#include <string.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <setjmp.h>
+
+#define NSPIRETRACE printf( "NSPIREDEBUG: %s:%d\n", __FILE__, __LINE__ );
 
 #undef atof
 /*#undef vsprintf
@@ -62,6 +71,8 @@ double atof( const char *str );
 #define sprintf Q_sprintf
 */
 
+extern void *p_nspire_stack_avoidance;
+
 #else
 #include <math.h>
 #include <string.h>
@@ -69,6 +80,9 @@ double atof( const char *str );
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
+
+#define NSPIRETRACE
+
 #endif
 
 #include "nspire_math.h"

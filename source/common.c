@@ -1824,6 +1824,7 @@ void COM_InitFilesystem (void)
 // start up with GAMENAME by default (id1)
 //
 	/*printf("G+++\n");*/
+	/*COM_AddGameDirectory (va("%s", basedir) );*/
 	COM_AddGameDirectory (va("%s/"GAMENAME, basedir) );
 
 	if (COM_CheckParm ("-rogue"))
@@ -1839,8 +1840,15 @@ void COM_InitFilesystem (void)
 	i = COM_CheckParm ("-game");
 	if (i && i < com_argc-1)
 	{
-		com_modified = true;
-		COM_AddGameDirectory (va("%s/%s", basedir, com_argv[i+1]));
+		/*com_modified = true;*/
+		if( com_argv[i+1][0] )
+		{
+			COM_AddGameDirectory (va("%s/%s", basedir, com_argv[i+1]));
+		}
+		else
+		{
+			COM_AddGameDirectory (va("%s", basedir));
+		}
 	}
 
 //

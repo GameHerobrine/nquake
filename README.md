@@ -53,6 +53,20 @@ you will hopefully be presented by a demo playback. If Quake
 complains about not finding gfx.wad the pak0.pak was not
 found at the expected location.
 
+In case you cannot put the pak file(s) in a id1 subdirectory
+relative to the nquake executable because you cannot put files
+in subdirectories with your link program AND you cannot upload
+the pak files to the calculator and then "Cut/Paste" or
+"Save As" them to an id1 directory you can create a file called
+nquake.cmd.tns in the directory where the nQuake executable
+is located. You can specify a commandline in this file which
+is parsed by nQuake upon startup. With the commandline parameter
+'-game <dir>' you can set an additional directory in which
+nQuake will look for pak files. So if you put your pak files
+in the same directory as the nQuake executable this file
+should contain '-game ""' ( without the ' ). An example of
+such a file is provided.
+
 
 == Keyboard Controls ==
 
@@ -92,11 +106,11 @@ Windows or, for Linux, the packet manager of your choice.
 
 The system specific stuff is in vid_nspire.c sys_nspire.c
 and sys_nspires.S. The Video driver is unspectacular, it
-just sets the PL111 controller to palette mode and copies
-the screen buffer to it upon request. The System functions
-are somewhat more interesting as IO appears to be slow on
-the Nspire so the routine that reads the keyboard state is
-of some value. The assembler functions are used to either
+just sets 320x240 8bit palette mode through the lcd interface
+and copies the screen buffer to it upon request. The System
+functions are somewhat more interesting as IO appears to be
+slow on the Nspire so the routine that reads the keyboard state
+is of some value. The assembler functions are used to either
 align the stack to 8 byte as the ARM EABI requires ( which
 Ndless does not seem to do ) so functions that take 8 byte
 datatypes work ( printf with doubles and the like ) or

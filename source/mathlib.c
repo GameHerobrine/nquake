@@ -367,7 +367,7 @@ void CrossProduct (vec3_t v1, vec3_t v2, vec3_t cross)
 	cross[2] = v1[0]*v2[1] - v1[1]*v2[0];
 }
 
-double sqrt(double x);
+/*double sqrt(double x);*/
 
 vec_t Length(vec3_t v)
 {
@@ -377,7 +377,7 @@ vec_t Length(vec3_t v)
 	length = 0;
 	for (i=0 ; i< 3 ; i++)
 		length += v[i]*v[i];
-	length = sqrt (length);		// FIXME
+	length = Q_sqrt( length );		// FIXME
 
 	return length;
 }
@@ -387,7 +387,7 @@ float VectorNormalize (vec3_t v)
 	float	length, ilength;
 
 	length = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-	length = sqrt (length);		// FIXME
+	length = Q_sqrt( length );		// FIXME
 
 	if (length)
 	{

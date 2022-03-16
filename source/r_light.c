@@ -288,6 +288,12 @@ int R_LightPoint (vec3_t p)
 	vec3_t		end;
 	int			r;
 	
+	/*
+	{
+	extern double d_generictimer;
+	double time1 = Sys_FloatTime();
+	*/
+
 	if (!cl.worldmodel->lightdata)
 		return 255;
 	
@@ -302,6 +308,11 @@ int R_LightPoint (vec3_t p)
 
 	if (r < r_refdef.ambientlight)
 		r = r_refdef.ambientlight;
+
+	/*
+	d_generictimer += Sys_FloatTime() - time1;
+	}
+	*/
 
 	return r;
 }

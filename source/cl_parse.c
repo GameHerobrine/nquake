@@ -891,7 +891,7 @@ void CL_ParseServerMessage (void)
 				else
 				{
 					CDAudio_Resume ();
-#ifdef defined( _WIN32 ) && !defined( WIN32FORNSPIRE )
+#if defined( _WIN32 ) && !defined( WIN32FORNSPIRE )
 					VID_HandlePause (false);
 #endif
 				}
