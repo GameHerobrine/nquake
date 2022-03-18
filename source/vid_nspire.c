@@ -31,50 +31,71 @@ extern viddef_t	vid;				// global video state
 #define	BASEWIDTH	320
 #define	BASEHEIGHT	240
 #define PALETTEREGS ( ( volatile unsigned int * ) 0xC0000200 )
+#define NSPIRE_SURFCACHESIZE (700*1024)
 
-byte	vid_buffer[BASEWIDTH*BASEHEIGHT] __attribute__ ((aligned (8))) ;
-short	zbuffer[BASEWIDTH*BASEHEIGHT] __attribute__ ((aligned (8)));
-byte	surfcache[SURFCACHE_SIZE_AT_320X200] __attribute__ ((aligned (8)));
+byte	vid_buffer[ BASEWIDTH * BASEHEIGHT ] __attribute__ ((aligned (8))) ;
+short	zbuffer[ BASEWIDTH * BASEHEIGHT ] __attribute__ ((aligned (8)));
+byte	surfcache[ NSPIRE_SURFCACHESIZE ] __attribute__ ((aligned (8)));
 
 unsigned short	d_8to16table[256];
 unsigned	d_8to24table[256];
 
 
-unsigned char rgui8_palette[ 256 ][ 3 ];
-unsigned int rgui_palette[ 128 ];
-unsigned int rgui_saved_palette[ 128 ];
 
 byte align256_colormap[ 0x4000 + 255 ];
+
+
+struct
+{
+	int i_vid_mode;
+	int b_palette_changed;
+	int b_refresh_u16palette;
+	int b_commit_palette;
+	unsigned char rgui8_palette[ 256 ][ 3 ];
+	unsigned int rgui_nspire_palette[ 128 ];
+	unsigned int rgui_nspire_saved_palette[ 128 ];
+	unsigned short rgui16_palette[ 256 ];
+} nspire_vid;
 
 void VID_UpdatePalette( )
 {
 	int i;
-	for( i = 0; i < 128; i++ )
+
+	if( nspire_vid.b_refresh_u16palette )
 	{
-		rgui_palette[ i ] = ( rgui8_palette[ i * 2 ][ 2 ] >> 3 ) | ( ( rgui8_palette[ i * 2 ][ 1 ] >> 3 ) << 5 ) | ( ( rgui8_palette[ i * 2 ][ 0 ] >> 3 ) << 10 );
-		rgui_palette[ i ] |= ( ( rgui8_palette[ i * 2 + 1 ][ 2 ] >> 3 ) | ( ( rgui8_palette[ i * 2 + 1 ][ 1 ] >> 3 ) << 5 ) | ( ( rgui8_palette[ i * 2 + 1 ][ 0 ] >> 3 ) << 10 ) ) << 16;
-		PALETTEREGS[ i ] = rgui_palette[ i ];
+		for( i = 0; i < 256; i++ )
+		{
+			unsigned short ui16_entry = ( ( nspire_vid.rgui8_palette[ i ][ 0 ] >> 3 ) << 11 ) | ( ( nspire_vid.rgui8_palette[ i ][ 1 ] >> 2 ) << 5 ) | ( ( nspire_vid.rgui8_palette[ i ][ 2 ] >> 3 ) );
+			nspire_vid.rgui16_palette[ i ] = ui16_entry;
+		}
+	}
+
+	if( nspire_vid.b_commit_palette )
+	{
+		for( i = 0; i < 128; i++ )
+		{
+			nspire_vid.rgui_nspire_palette[ i ] = ( nspire_vid.rgui8_palette[ i * 2 ][ 2 ] >> 3 ) | ( ( nspire_vid.rgui8_palette[ i * 2 ][ 1 ] >> 3 ) << 5 ) | ( ( nspire_vid.rgui8_palette[ i * 2 ][ 0 ] >> 3 ) << 10 );
+			nspire_vid.rgui_nspire_palette[ i ] |= ( ( nspire_vid.rgui8_palette[ i * 2 + 1 ][ 2 ] >> 3 ) | ( ( nspire_vid.rgui8_palette[ i * 2 + 1 ][ 1 ] >> 3 ) << 5 ) | ( ( nspire_vid.rgui8_palette[ i * 2 + 1 ][ 0 ] >> 3 ) << 10 ) ) << 16;
+			PALETTEREGS[ i ] = nspire_vid.rgui_nspire_palette[ i ];
+		}
 	}
 }
 
 void	VID_SetPalette (unsigned char *palette)
 {
-	memcpy( rgui8_palette, palette, 256 * 3 * sizeof( unsigned char ) );
-	VID_UpdatePalette();
+	memcpy( nspire_vid.rgui8_palette, palette, 256 * 3 * sizeof( unsigned char ) );
+	nspire_vid.b_palette_changed = 1;
 }
 
 void	VID_ShiftPalette (unsigned char *palette)
 {
-	memcpy( rgui8_palette, palette, 256 * 3 * sizeof( unsigned char ) );
-	VID_UpdatePalette();
+	memcpy( nspire_vid.rgui8_palette, palette, 256 * 3 * sizeof( unsigned char ) );
+	nspire_vid.b_palette_changed = 1;
 }
 
 void VID_SetPaletteMode()
 {
-
 	int i;
-	unsigned int i_ctrl;
-	volatile unsigned int *pi_lcd_control = IO_LCD_CONTROL;
 
 	if( !has_colors )
 	{
@@ -83,14 +104,48 @@ void VID_SetPaletteMode()
 
 	for( i = 0; i < 128; i++ )
 	{
-		rgui_saved_palette[ i ] = PALETTEREGS[ i ];
+		nspire_vid.rgui_nspire_saved_palette[ i ] = PALETTEREGS[ i ];
 	}
 
 	if( lcd_init( SCR_320x240_8 ) == 0 )
 	{
 		Sys_Error( "unable to set 320x240 8bpp mode" );
 	}
+
+	nspire_vid.b_commit_palette = 1;
+	nspire_vid.b_refresh_u16palette = 0;
+	nspire_vid.i_vid_mode = SCR_320x240_8;
 }
+
+
+void VID_Set16BitMode( )
+{
+	if( !has_colors )
+	{
+		return; /* this should never happen as we check it in main() */
+	}
+
+	if( lcd_type( ) == SCR_240x320_565 )
+	{
+		nspire_vid.i_vid_mode = SCR_240x320_565;
+		if( lcd_init( nspire_vid.i_vid_mode ) == 0 )
+		{
+			Sys_Error( "unable to set 240x320 16bpp mode" );
+		}
+	}
+	else /*if( lcd_type( ) == SCR_320x240_565 ) well ... */
+	{
+		nspire_vid.i_vid_mode = SCR_320x240_565;
+		if( lcd_init( nspire_vid.i_vid_mode ) == 0 )
+		{
+			Sys_Error( "unable to set 320x240 16bpp mode" );
+		}
+	}
+
+	nspire_vid.b_commit_palette = 0;
+	nspire_vid.b_refresh_u16palette = 1;
+}
+
 
 void VID_RestoreColorMode()
 {
@@ -99,13 +154,18 @@ void VID_RestoreColorMode()
 	{
 		return; /* this should never happen as we check it in main() */
 	}
-
-	for( i = 0; i < 128; i++ )
+	else
 	{
-		PALETTEREGS[ i ] = rgui_saved_palette[ i ];
+		if( nspire_vid.b_commit_palette )
+		{
+			for( i = 0; i < 128; i++ )
+			{
+				PALETTEREGS[ i ] = nspire_vid.rgui_nspire_saved_palette[ i ];
+			}
+		}
 	}
 
-	if( lcd_init( lcd_type() ) == 0 )
+	if( lcd_init( -1 ) == 0 )
 	{
 		Sys_Error( "could not restore native lcd mode"); /* fuck */
 	}
@@ -130,10 +190,17 @@ void	VID_Init (unsigned char *palette)
 	d_pzbuffer = zbuffer;
 	D_InitCaches (surfcache, sizeof(surfcache));
 
-	VID_SetPaletteMode();
+	memcpy( nspire_vid.rgui8_palette, palette, 256 * 3 * sizeof( unsigned char ) );
 
-	memcpy( rgui8_palette, palette, 256 * 3 * sizeof( unsigned char ) );
-	VID_UpdatePalette();
+	if( is_cx2 )
+	{
+		VID_Set16BitMode( );
+	}
+	else
+	{
+		VID_SetPaletteMode( );
+		VID_UpdatePalette( );
+	}
 }
 
 void	VID_Shutdown (void)
@@ -142,238 +209,62 @@ void	VID_Shutdown (void)
 }
 
 
-static inline void VID_CopyTile_8x8_flipped( unsigned char *dst, int32_t i_dst_stride, unsigned char *srci, int32_t i_src_stride )
-{
-	int i_x, i_y;
-	const unsigned char *src;
-
-	src = ( const unsigned char * ) srci;
-
-	for( i_y = 0; i_y < 8; i_y++ )
-	{
-		for( i_x = 0; i_x < 8; i_x++ )
-		{
-			dst[ i_y + i_x * i_dst_stride ] = src[ i_x + i_y * i_src_stride ];
-		}
-	}
-}
-
-static inline void VID_CopyTile_flipped( unsigned char *dst, int32_t i_dst_stride, unsigned char *srci, int32_t i_src_stride, int32_t i_width, int32_t i_height )
-{
-	int i_x, i_y;
-	const unsigned char *src;
-
-	src = ( const unsigned char * ) srci;
-
-	for( i_y = 0; i_y < i_height; i_y++ )
-	{
-		for( i_x = 0; i_x < i_width; i_x++ )
-		{
-			dst[ i_y + i_x * i_dst_stride ] = src[ i_x + i_y * i_src_stride ];
-		}
-	}
-}
-
-static inline void VID_CopyTile_8x8_unflipped( unsigned char *dst, int32_t i_dst_stride, unsigned char *srci, int32_t i_src_stride )
-{
-	int i_x, i_y;
-	const unsigned char *src;
-
-	src = ( const unsigned char * ) srci;
-
-	for( i_y = 0; i_y < 8; i_y++ )
-	{
-		for( i_x = 0; i_x < 8; i_x++ )
-		{
-			dst[ i_x + i_y * i_dst_stride ] = src[ i_x + i_y * i_src_stride ];
-		}
-	}
-}
-
-static inline void VID_CopyTile_unflipped( unsigned char *dst, int32_t i_dst_stride, unsigned char *srci, int32_t i_src_stride, int32_t i_width, int32_t i_height )
-{
-	int i_x, i_y;
-	const unsigned char *src;
-
-	src = ( const unsigned char * ) srci;
-
-	for( i_y = 0; i_y < i_height; i_y++ )
-	{
-		for( i_x = 0; i_x < i_width; i_x++ )
-		{
-			dst[ i_x + i_y * i_dst_stride ] = src[ i_x + i_y * i_src_stride ];
-		}
-	}
-}
-
-
-#if 0
-static inline void VID_CopyLine( unsigned char *dst, unsigned char *src, int line_width )
-{
-	/* FIXME: why is the memcpy call faster ? */
-#if 0
-	int i_idx, i_end;
-	long long pels0, pels1, *pllsrc, *plldst;
-
-	if( (size_t)dst & 0x7 || (size_t)src & 0x7 )
-	{
-#endif
-		memcpy( dst, src, line_width );
-#if 0
-		return;
-	}
-
-	pllsrc = ( long long *)src;
-	plldst = ( long long *)dst;
-
-	__builtin_prefetch( pllsrc );
-	__builtin_prefetch( pllsrc + 32 );
-
-	i_end = line_width & ~0x3f;
-	i_idx = 0;
-	while( i_idx < i_end )
-	{
-		__builtin_prefetch( pllsrc + 64 );
-		__builtin_prefetch( pllsrc + 64+32 );
-		pels0 = *( pllsrc++ );
-		pels1 = *( pllsrc++ );
-		*( plldst++ ) = pels0;
-		*( plldst++ ) = pels1;
-		pels0 = *( pllsrc++ );
-		pels1 = *( pllsrc++ );
-		*( plldst++ ) = pels0;
-		*( plldst++ ) = pels1;
-		pels0 = *( pllsrc++ );
-		pels1 = *( pllsrc++ );
-		*( plldst++ ) = pels0;
-		*( plldst++ ) = pels1;
-		pels0 = *( pllsrc++ );
-		pels1 = *( pllsrc++ );
-		*( plldst++ ) = pels0;
-		*( plldst++ ) = pels1;
-		i_idx += 64;
-	}
-	if( i_end < line_width )
-	{
-		int i_delt = line_width - i_end;
-
-		if( i_delt & 0x20 )
-		{
-			pels0 = *( pllsrc++ );
-			pels1 = *( pllsrc++ );
-			*( plldst++ ) = pels0;
-			*( plldst++ ) = pels1;
-			pels0 = *( pllsrc++ );
-			pels1 = *( pllsrc++ );
-			*( plldst++ ) = pels0;
-			*( plldst++ ) = pels1;
-		}
-		if( i_delt & 0x10 )
-		{
-			pels0 = *( pllsrc++ );
-			pels1 = *( pllsrc++ );
-			*( plldst++ ) = pels0;
-			*( plldst++ ) = pels1;
-		}
-		if( i_delt & 0x8 )
-		{
-			pels0 = *( pllsrc++ );
-			*( plldst++ ) = pels0;
-		}
-		i_delt = i_delt & 0x7;
-		src = ( unsigned char * ) pllsrc;
-		dst = ( unsigned char * ) plldst;
-		while( i_delt-- )
-		{
-			*( dst++ ) = *( src++ );
-		}
-	}
-#endif
-}
-
-#endif
 
 void	VID_Update (vrect_t *rects)
 {
-#ifdef FORNSPIRE
-	int i_x, i_y, i_width, i_line_left;
-	unsigned char *ptr = REAL_SCREEN_BASE_ADDRESS;
-	unsigned char *pui8_dstline, *pui8_srcline, *pui8_dst, *pui8_src;
+	int i_x, i_y, i_from_x, i_to_x, i_from_y, i_to_y;
 
-	i_width = SCREEN_WIDTH;
+	i_from_x = rects->x;
+	i_from_y = rects->y;
+	i_to_x = i_from_x + rects->width;
+	i_to_y = i_from_y + rects->height;
 
-	if( lcd_type() == SCR_240x320_565 )
+	if( nspire_vid.b_palette_changed )
 	{
-		int32_t i_rem_height, i_rem_width, i_tile_height, i_tile_width;
+		VID_UpdatePalette( );
+		nspire_vid.b_palette_changed = 0;
 
-		i_rem_height = rects->height;
-		pui8_srcline = &vid_buffer[ rects->x + rects->y * SCREEN_WIDTH ];
-		pui8_dstline = &ptr[ rects->y + rects->x * SCREEN_HEIGHT ];
-
-		while( i_rem_height > 0 )
+		if( nspire_vid.b_refresh_u16palette )
 		{
-			i_rem_width = rects->width;
-			pui8_src = pui8_srcline;
-			pui8_dst = pui8_dstline;
-			pui8_srcline += SCREEN_WIDTH * 8;
-			pui8_dstline += 8;
-			while( i_rem_width > 0 )
-			{
-				if( i_rem_width >= 8 && i_rem_height >= 8 )
-				{
-					VID_CopyTile_8x8_flipped( pui8_dst, SCREEN_HEIGHT, pui8_src, SCREEN_WIDTH );
-				}
-				else
-				{
-					VID_CopyTile_flipped( pui8_dst, SCREEN_HEIGHT, pui8_src, SCREEN_WIDTH, i_rem_width, i_rem_height );
-				}
-				pui8_src += 8;
-				pui8_dst += 8 * SCREEN_HEIGHT;
-				i_rem_width -= 8;
-			}
-			i_rem_height -= 8;
+			/* if palette changed and we are using 16bpp we need to refresh the whole framebuffer with new the colors */
+			i_from_x = 0;
+			i_from_y = 0;
+			i_to_x = SCREEN_WIDTH;
+			i_to_y = SCREEN_HEIGHT;
 		}
 	}
-	else if( lcd_type() == SCR_320x240_565 )
+
+	if( nspire_vid.i_vid_mode == SCR_320x240_8 )
 	{
-		int32_t i_rem_height, i_rem_width, i_tile_height, i_tile_width;
-
-		i_rem_height = rects->height;
-		pui8_srcline = &vid_buffer[ rects->x + rects->y * SCREEN_WIDTH ];
-		pui8_dstline = &ptr[ rects->x + rects->y * SCREEN_WIDTH ];
-
-		while( i_rem_height > 0 )
+		lcd_blit( &vid_buffer[ 0 ], SCR_320x240_8 ); /* FIXME: partial ... ? */
+	}
+	else if( nspire_vid.i_vid_mode == SCR_240x320_565 )
+	{
+		unsigned short *pui16_fb = ( unsigned short * ) REAL_SCREEN_BASE_ADDRESS;
+		for( i_y = i_from_y; i_y < i_to_y; i_y++ )
 		{
-			i_rem_width = rects->width;
-			pui8_src = pui8_srcline;
-			pui8_dst = pui8_dstline;
-			pui8_srcline += SCREEN_WIDTH * 8;
-			pui8_dstline += SCREEN_WIDTH * 8;
-			while( i_rem_width > 0 )
+			unsigned short *pui16_dst = &pui16_fb[ i_y + i_from_x * SCREEN_HEIGHT ];
+			const unsigned char *pui8_src = ( const unsigned char * ) &vid_buffer[ i_y * SCREEN_WIDTH + i_from_x ];
+			for( i_x = 0; i_x < i_to_x - i_from_x; i_x++ )
 			{
-				if( i_rem_width >= 8 && i_rem_height >= 8 )
-				{
-					VID_CopyTile_8x8_unflipped( pui8_dst, SCREEN_WIDTH, pui8_src, SCREEN_WIDTH );
-				}
-				else
-				{
-					VID_CopyTile_unflipped( pui8_dst, SCREEN_WIDTH, pui8_src, SCREEN_WIDTH, i_rem_width, i_rem_height );
-				}
-				pui8_src += 8;
-				pui8_dst += 8;
-				i_rem_width -= 8;
+				*pui16_dst = nspire_vid.rgui16_palette[ pui8_src[ i_x ] ];
+				pui16_dst += 240;
 			}
-			i_rem_height -= 8;
 		}
 	}
-	else
+	else /*if( nspire_vid.i_vid_mode == SCR_320x240_565 ) well .. */
 	{
-		lcd_blit( &vid_buffer[ 0 ], SCR_320x240_8 );
+		unsigned short *pui16_fb = ( unsigned short * ) REAL_SCREEN_BASE_ADDRESS;
+		for( i_y = i_from_y; i_y < i_to_y; i_y++ )
+		{
+			unsigned short *pui16_dst = &pui16_fb[ i_y * SCREEN_WIDTH + i_from_x ];
+			const unsigned char *pui8_src = ( const unsigned char * ) &vid_buffer[ i_y * SCREEN_WIDTH + i_from_x ];
+			for( i_x = 0; i_x < i_to_x - i_from_x; i_x++ )
+			{
+				pui16_dst[ i_x ] = nspire_vid.rgui16_palette[ pui8_src[ i_x ] ];
+			}
+		}
 	}
-#else
-	volatile int i_pel;
-	i_pel = 0;
-#endif
 }
 
 /*

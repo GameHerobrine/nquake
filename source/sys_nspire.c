@@ -744,7 +744,7 @@ void main_s( int argc, char **argv )
 
 	/*printf("main_s alloc\n" );*/
 
-	parms.memsize = 10*1024*1024;
+	parms.memsize = 8*1024*1024;
 	parms.membase = p_nspire_membase = malloc (parms.memsize);
 	parms.basedir = ".";
 
