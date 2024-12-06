@@ -5,7 +5,7 @@ LD  = nspire-ld
 GENZEHN = genzehn
 
 #-funroll-loops
-GCCFLAGS = -O6 -Wall -W -marm -ffast-math -fomit-frame-pointer -flto -DFORNSPIRE
+GCCFLAGS = -O6 -Wall -W -marm -fomit-frame-pointer -flto -DFORNSPIRE
 LDFLAGS = -lm -flto
 EXE = nquake
 IEXE = nquake.elf
